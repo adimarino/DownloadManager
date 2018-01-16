@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.concurrent.BlockingQueue;
 
@@ -43,46 +44,38 @@ public class HTTPRangeGetter implements Runnable {
         // Build Http GET request.
         HttpURLConnection connection = buildRequest(rangeProperty.toString());
         
-        // Connect (download).
-        connection.connect();
-        
         int response = 0;
         InputStream inputStream = null;
         int readSize = 0;
-        
-        try {
-        	
-        	this.tokenBucket.take(CHUNK_SIZE);
-        	
-        	connection.connect();
-        	// Check response code.
-        	response = connection.getResponseCode();
-            if(response / 100 != 2){
-            	System.err.println("Download Failed");
-            	throw new IOException("Resonse Code: " + response);
-            }
-       
-            inputStream = connection.getInputStream();
-            byte[] buffer = new byte[CHUNK_SIZE];
-            long offset = this.range.getStart();
-            
-            // Read from input stream and put chuncks in queue.
-            while((readSize = inputStream.read(buffer)) != -1){
-            	
-            	this.tokenBucket.take(readSize);
-            	Chunk chunk = new Chunk(buffer, offset, readSize);
-            	outQueue.put(chunk);
-            	offset += readSize;
-            }
-        } catch(Exception e) {
-        	e.printStackTrace();
-        	
-        } finally {
-        	if(inputStream != null){
-        		inputStream.close();
-        	}
-        	connection.disconnect();
+
+
+        this.tokenBucket.take(CHUNK_SIZE);
+
+        connection.connect();
+
+        // Check response code.
+        response = connection.getResponseCode();
+        if(response / 100 != 2){
+            System.err.println("Download Failed");
+            throw new IOException("Response Code: " + response);
         }
+
+        inputStream = connection.getInputStream();
+        byte[] buffer = new byte[CHUNK_SIZE];
+        long offset = this.range.getStart();
+
+        // Read from input stream and put chuncks in queue.
+        while((readSize = inputStream.read(buffer)) != -1){
+
+            this.tokenBucket.take(readSize);
+            Chunk chunk = new Chunk(buffer, offset, readSize);
+            outQueue.put(chunk);
+            offset += readSize;
+        }
+        if(inputStream != null){
+            inputStream.close();
+        }
+        connection.disconnect();
     }
     
     /**
@@ -108,8 +101,8 @@ public class HTTPRangeGetter implements Runnable {
         try {
             this.downloadRange();
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
             System.err.println("Download failed");
+            System.exit(-1);
         }
     }
 }
