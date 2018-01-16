@@ -86,30 +86,30 @@ public class IdcDm {
 		
 		// Initiate FileWriter.
 		FileWriter fileWriter = new FileWriter(downloadableMetadata, blockingQueue);
-    	
+
 		maxBytesPerSecond = maxBytesPerSecond == null ? Long.MAX_VALUE : maxBytesPerSecond;
-		
+
 		// Initiate TokenBucket.
     	TokenBucket tokenBucket = new TokenBucket(maxBytesPerSecond);
-    	
+
     	// Initiate RateLimiter.
     	RateLimiter rateLimiter = new RateLimiter(tokenBucket, maxBytesPerSecond);
-    	
+
     	// Initiate and start fileWriter and rateLimiter threads.
     	Thread fileWriterT = new Thread(fileWriter);
     	Thread rateLimiterT = new Thread(rateLimiter);
     	fileWriterT.start();
     	rateLimiterT.start();
-    	
+
     	Thread[] threads = new Thread[numberOfWorkers];
-    	Range rangeReader;
     	
-    	while((rangeReader = downloadableMetadata.getMissingRange()) != null){
-    		
-    		long workerPartSize = (long) rangeReader.getLength() / numberOfWorkers;
-    		long startPos = rangeReader.getStart();
+    	while(!downloadableMetadata.isCompleted()){
+
+			Range rangeReader = downloadableMetadata.getMissingRange();
+			long workerPartSize = rangeReader.getLength() / numberOfWorkers;
+    		long startPos;
     		long endPos = 0L;
-    		
+
     		// Start threads with partial ranges (based on num of workers).
     		for(int i = 0; i < numberOfWorkers; i++){
     			startPos = i == 0 ? rangeReader.getStart() : endPos;
@@ -183,12 +183,4 @@ public class IdcDm {
     	}
     	return 0L;
     }
-    
-    /**
-     * Get queue capacity.
-     * @throws InterruptedException 
-     * @throws IOException 
-    public static int getQueueCpacity(long size){
-    	return (int) Math.ceil(((double) size / CHUNK_SIZE));
-    }*/
 }

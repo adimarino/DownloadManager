@@ -37,6 +37,10 @@ class DownloadableMetadata implements Serializable{
         return path.substring(path.lastIndexOf('/') + 1, path.length());
     }
 
+    /**
+     * Add range to downloaded array.
+     * @param range
+     */
     void addRange(Range range) {
     	
     	this.totalBytesWritten += range.getLength();
@@ -71,73 +75,96 @@ class DownloadableMetadata implements Serializable{
         			Range newRange = new Range(start, current.getEnd());
         			this.downloaded.add(i, newRange);
             		this.downloaded.remove(i + 1);
+            		return;
         		}
         		else{ 
         			this.downloaded.add(i, range);
+        			return;
         		}
         	}
         }
     }
 
+    /**
+     * Get file name.
+     * @return file name.
+     */
     public String getFilename() {
         return this.filename;
     }
-    
+
+    /**
+     * Get metadata file name.
+     * @return metadata file name.
+     */
     public String getMetaDataFilename(){
     	return this.metadataFilename;
     }
-    
+
+    /**
+     * Get total number of byte downloaded.
+     * @return total number of byte downloaded
+     */
     public long getTotalBytesWritten(){
     	return this.totalBytesWritten;
     }
 
+    /**
+     * Get file size.
+     * @return file size.
+     */
     public long getSize(){
     	return this.size;
     }
-    
+
+    /**
+     * Check if the file download is completed.
+     * @return true if download completed, otherwise returns flase.
+     */
     boolean isCompleted() {
-    	System.out.println("Array size:" + downloaded.size() + " downloaded size cond returns: " + (downloaded.size() == 1));
-    	System.out.println("Range 0: start point - " + downloaded.get(0).getStart() + " end point - " + downloaded.get(0).getEnd());
-    	System.out.println("File size: " + this.size);
-        return (downloaded.size() == 1) && (downloaded.get(0).getStart() == 0L) && (downloaded.get(0).getEnd() == this.size) && (this.getMissingRange() == null);
+        Range range = this.getMissingRange();
+        return range.getLength() == 1;
     }
 
-    void delete() {
-        File metaDataToDelete = new File(this.metadataFilename);
-        metaDataToDelete.delete();
-    }
-
-    Range getMissingRange() {
+    /**
+     * Retrieve the first empty range located in Downloaded array list.
+     * @return missing range.
+     */
+    public Range getMissingRange() {
         if(this.downloaded.size() == 0){
-        	System.out.println("all" + 0 +"-"+this.size);
         	return new Range(0L, this.size);
         }
         
-        for(int i = 0; i < this.downloaded.size() - 1; i++){
+        for(int i = 0; i < this.downloaded.size(); i++){
         	Range current = this.downloaded.get(i);
+
+        	// Case only one range in the array.
+        	if(this.downloaded.size() == 1 && i == 0){
+                if(current.getStart() != 0L){
+                    return new Range(0L, current.getStart());
+                }
+                else{
+                    return new Range(current.getEnd(), this.size);
+                }
+            }
         	Range next = this.downloaded.get(i + 1);
         	
         	// Case first range is not including position 0.
         	if(i == 0 && current.getStart() != 0L){
-        		System.out.println("1: " + 0 +"-"+current.getStart());
         		return new Range(0L, current.getStart());
         	} 
         	// Case last range is not including last position.
         	if(i == this.downloaded.size() - 1 && next.getEnd() != this.size -1){
         		//return new Range(next.getEnd() + 1, this.size - 1);
-        		System.out.println("2 " + current.getEnd() +"-"+this.size);
         		return new Range(current.getEnd(), this.size);
         	}
         	// Case of first missing range found. 
-        	if(current.getEnd() != next.getStart() - 1){
-        		System.out.println("3 " + current.getEnd() +"-"+next.getStart());
+        	if(current.getEnd() < next.getStart() - 1){
         		return new Range(current.getEnd(), next.getStart());
-        	}
+        	} else {
+                return new Range(next.getStart(), current.getEnd() -1);
+            }
         }
         return null;
-    }
-
-    String getUrl() {
-        return url;
     }
 }

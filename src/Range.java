@@ -12,14 +12,26 @@ class Range implements Serializable{
         this.end = end;
     }
 
+    /**
+     * Get start point of range.
+     * @return start point of range.
+     */
     Long getStart() {
         return start;
     }
 
+    /**
+     * Get end point of range.
+     * @return end point of range.
+     */
     Long getEnd() {
         return end;
     }
 
+    /**
+     * Get length of range.
+     * @return length of range.
+     */
     Long getLength() {
         return end - start + 1;
     }

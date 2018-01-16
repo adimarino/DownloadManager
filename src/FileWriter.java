@@ -23,26 +23,29 @@ public class FileWriter implements Runnable {
         this.isTerminated = false;
     }
 
-    private void writeChunks() throws IOException {
+	/**
+	 * Write data chunks to file.
+	 * @throws IOException
+	 */
+	private void writeChunks() throws IOException {
     	// Create new download file if needed.
     	File file = new File(this.downloadableMetadata.getFilename());
     	if (!file.exists()){
         	file.createNewFile();
         }
     	RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
-    	
-    	FileOutputStream metaDataFile = new FileOutputStream(this.downloadableMetadata.getMetaDataFilename());
+
     	long fileSize = this.downloadableMetadata.getSize();
     	long downloaded = this.downloadableMetadata.getTotalBytesWritten();
     	int percent = (int) (((double) downloaded / fileSize) * 100);
     	System.err.println("Downloaded " + percent + "%");
-    	ObjectOutputStream metadataStream = null;
     	
     	// Take chunks until queueu is empty, and write them to dowloaded file and metadata.
     	try {
     		while(true){
     		
     			Chunk chunk = this.chunkQueue.take();
+
     			// Check if filewriter is terminated.
     			if(chunk.getOffset() == -1){
     				break;
@@ -62,38 +65,24 @@ public class FileWriter implements Runnable {
 					System.err.println("Downloaded " + currentPercent + "%");
 					percent = currentPercent;
 				}
-				
-				metadataStream = new ObjectOutputStream(metaDataFile);
-				metadataStream.writeObject(downloadableMetadata);
-				
-			
+
+				FileOutputStream metaDataFile = null;
+				ObjectOutputStream metadataStream = null;
+				try {
+					metaDataFile = new FileOutputStream(this.downloadableMetadata.getMetaDataFilename());
+					metadataStream = new ObjectOutputStream(metaDataFile);
+					metadataStream.writeObject(downloadableMetadata);
+				} catch (Exception e1){
+					metadataStream.close();
+					metaDataFile.close();
+				}
     		}
-    		Thread.sleep(500);
     	} catch (InterruptedException e) {
 			e.printStackTrace();
 			System.err.println("Download failed");
 		} finally {
-			metadataStream.close();
 			randomAccessFile.close();
-			metaDataFile.close();
 		}
-    	
-    	
-    }
-    
-    /**
-     * Mark the filewriter as terminated.
-     */
-    public void terminate() {
-        this.isTerminated = true;
-    }
-
-    /**
-     * Chcek if filewriter is terminated.
-     * @return true if the filewriter is terminated, false otherwise.
-     */
-    boolean terminated() {
-        return this.isTerminated;
     }
     
     @Override
